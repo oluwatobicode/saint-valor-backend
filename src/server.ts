@@ -2,6 +2,8 @@ import express, { Application, Request, Response } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
+import { connectDB } from "./config";
+import { authRoutes } from "./routes";
 
 // Load environment variables
 dotenv.config();
@@ -15,6 +17,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// connecting to the db
+connectDB();
+
 // Test route
 app.get("/", (req: Request, res: Response) => {
   res.json({
@@ -23,6 +28,9 @@ app.get("/", (req: Request, res: Response) => {
     status: "running",
   });
 });
+
+// routes
+app.use("/api/v1/auth", authRoutes);
 
 // Start server
 app.listen(PORT, () => {
