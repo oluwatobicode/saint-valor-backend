@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
 import { connectDB } from "./config";
-import { authRoutes } from "./routes";
+import { authRoutes, orderRoutes, userRoutes } from "./routes";
 
 // Load environment variables
 dotenv.config();
@@ -31,6 +31,8 @@ app.get("/", (req: Request, res: Response) => {
 
 // routes
 app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/orders", orderRoutes);
 
 // Start server
 app.listen(PORT, () => {
