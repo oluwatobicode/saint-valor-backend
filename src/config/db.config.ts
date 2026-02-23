@@ -1,8 +1,11 @@
-import mongoose from "mongoose";
 import { config } from "./app.config";
+import mongoose from "mongoose";
 
-export const connectDB = async () => {
+export const connectDb = async () => {
   try {
+    if (!config.databaseUrl) {
+      throw new Error("Database URL is not defined");
+    }
     await mongoose.connect(config.databaseUrl);
     console.log("✅ Database connection successful");
   } catch (error) {

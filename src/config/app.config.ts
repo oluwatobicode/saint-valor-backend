@@ -4,8 +4,7 @@ dotenv.config();
 
 export const config = {
   port: process.env.PORT || 5000,
-  databaseUrl:
-    process.env.MONGODB_URL || "mongodb://localhost:27017/saint-valor",
+  databaseUrl: process.env.MONGODB_URL,
   jwtSecret: process.env.JWT_SECRET,
   jwtExpiresIn: process.env.JWT_EXPIRES_IN,
   paystackSecretKey: process.env.PAYSTACK_SECRET_KEY,

@@ -2,8 +2,16 @@ import express, { Application, Request, Response } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import helmet from "helmet";
-import { connectDB } from "./config";
-import { authRoutes, orderRoutes, userRoutes } from "./routes";
+import {
+  authRoutes,
+  orderRoutes,
+  userRoutes,
+  adminRoutes,
+  productRoutes,
+  favouriteRoutes,
+} from "./routes";
+import { productController } from "./controllers";
+import { connectDb } from "./config/db.config";
 
 // Load environment variables
 dotenv.config();
@@ -18,7 +26,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // connecting to the db
-connectDB();
+connectDb();
 
 // Test route
 app.get("/", (req: Request, res: Response) => {
@@ -33,6 +41,15 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/orders", orderRoutes);
+app.use("/api/v1/admin", adminRoutes);
+app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/favourites", favouriteRoutes);
+
+// Standalone public product endpoints
+app.get("/api/v1/new-arrivals", productController.getNewArrivals);
+app.get("/api/v1/best-sellers", productController.getBestSellers);
+app.get("/api/v1/collections", productController.getPublicCollections);
+app.get("/api/v1/categories", productController.getPublicCategories);
 
 // Start server
 app.listen(PORT, () => {

@@ -91,14 +91,29 @@ export const getUserOrders = async (
   req: Request,
   res: Response,
   next: NextFunction,
-) => {
+): Promise<void> => {
   try {
     const { userId } = req.params;
-    const orders = await Order.find({ user: userId }).select(
-      "orderId items status address phoneNumber shippingMethod createdAt",
-    );
 
-    res.status(200).json({
+    const filter: Record<string, unknown> = { user: userId };
+
+    // Filter by status: ?status=ongoing or ?status=completed
+    if (req.query.status) {
+      const status = req.query.status as string;
+      if (status === "ongoing") {
+        filter.orderStatus = { $in: ["pending", "ongoing"] };
+      } else if (status === "completed") {
+        filter.orderStatus = { $in: ["completed", "cancelled"] };
+      }
+    }
+
+    const orders = await Order.find(filter)
+      .sort({ createdAt: -1 })
+      .select(
+        "orderId items totalPrice orderStatus address phoneNumber shippingMethod createdAt",
+      );
+
+    res.status(HTTP_STATUS.Ok).json({
       status: "success",
       results: orders.length,
       data: {

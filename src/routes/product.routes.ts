@@ -3,8 +3,8 @@ import { productController } from "../controllers";
 
 const router = Router();
 
-// creating a product
-router.post("/", productController.createProduct);
-router.post("/:id", productController.editProduct);
+// Products (paginated with filters)
+router.get("/", productController.getAllProducts);
+router.get("/:id", productController.getProduct);
 
 export default router;

@@ -1,3 +1,3 @@
-export { connectDB } from "./db.config";
+export { connectDb } from "./db.config";
 export { config } from "./app.config";
 export * from "./constants.config";
