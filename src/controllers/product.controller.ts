@@ -4,15 +4,7 @@ import Category from "../models/Category";
 import Collection from "../models/Collection";
 import { HTTP_STATUS } from "../config";
 
-// ─────────────────────────────────────────────
-//  PUBLIC PRODUCT ENDPOINTS
-// ─────────────────────────────────────────────
-
-/**
- * GET /api/v1/products
- * Paginated list with advanced filters (collection, category, jewelryType,
- * material, karat, weight, size, priceMin/priceMax, search)
- */
+// get all products with advanced filters (collection, category, jewelryType, material, karat, weight, size, priceMin/priceMax, search)
 export const getAllProducts = async (
   req: Request,
   res: Response,
@@ -91,9 +83,7 @@ export const getAllProducts = async (
   }
 };
 
-/**
- * GET /api/v1/products/:id
- */
+// get a product by its id
 export const getProduct = async (
   req: Request,
   res: Response,
@@ -121,9 +111,7 @@ export const getProduct = async (
   }
 };
 
-/**
- * GET /api/v1/new-arrivals
- */
+// get new arrivals
 export const getNewArrivals = async (
   req: Request,
   res: Response,
@@ -148,9 +136,7 @@ export const getNewArrivals = async (
   }
 };
 
-/**
- * GET /api/v1/best-sellers
- */
+// get all best sellers
 export const getBestSellers = async (
   req: Request,
   res: Response,
@@ -175,9 +161,7 @@ export const getBestSellers = async (
   }
 };
 
-/**
- * GET /api/v1/collections  (public — list all collections)
- */
+// get all collection
 export const getPublicCollections = async (
   req: Request,
   res: Response,
@@ -196,9 +180,7 @@ export const getPublicCollections = async (
   }
 };
 
-/**
- * GET /api/v1/categories  (public — list all categories)
- */
+// get all categories
 export const getPublicCategories = async (
   req: Request,
   res: Response,

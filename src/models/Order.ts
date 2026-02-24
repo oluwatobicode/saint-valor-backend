@@ -21,8 +21,8 @@ const orderSchema = new mongoose.Schema(
     },
     orderStatus: {
       type: String,
-      default: "ongoing",
-      enum: ["ongoing", "completed", "cancelled"],
+      default: "pending",
+      enum: ["pending", "ongoing", "completed", "cancelled"],
     },
     phoneNumber: {
       type: String,
@@ -60,6 +60,16 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    paymentStatus: {
+      type: String,
+      default: "pending",
+      enum: ["pending", "paid", "failed"],
+    },
+    paystackReference: {
+      type: String,
+      unique: true,
+      sparse: true,
     },
   },
   {

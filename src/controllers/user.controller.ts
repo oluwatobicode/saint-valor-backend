@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import User from "../models/User";
 import { HTTP_STATUS } from "../config";
 
+// get all users
 export const allUsers = async (
   req: Request,
   res: Response,
@@ -39,6 +40,7 @@ export const allUsers = async (
   }
 };
 
+// get a single user
 export const getAUser = async (
   req: Request,
   res: Response,
@@ -56,14 +58,6 @@ export const getAUser = async (
       });
       return;
     }
-
-    /* 
-    TODO: RETURN ONLY THE FOLLOWING FOR THE USERS
-    - name (firstName, lastName)
-    - email
-    - memberSince
-    -orders
-    */
 
     if (userDetail) {
       res.status(HTTP_STATUS.Ok).json({

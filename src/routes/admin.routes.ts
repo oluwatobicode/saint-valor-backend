@@ -1,11 +1,16 @@
 import { Router } from "express";
 import { adminController } from "../controllers";
+import { authMiddleware } from "../middleware/auth.middlware";
+import { adminMiddleware } from "../middleware/admin.middlware";
 import {
   uploadSingle,
   uploadProductImages,
 } from "../middleware/upload.middlware";
 
 const router = Router();
+
+// All admin routes require login + admin role
+router.use(authMiddleware, adminMiddleware);
 
 // ── Category Management ──
 router.get("/categories", adminController.getAllCategories);

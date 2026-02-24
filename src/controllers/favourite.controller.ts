@@ -2,26 +2,16 @@ import { NextFunction, Request, Response } from "express";
 import Favourite from "../models/Favourite";
 import Product from "../models/Product";
 import { HTTP_STATUS } from "../config";
+import "../types";
 
-/**
- * GET /api/v1/favourites?userId=xxx
- * Get all favourites for a user (populated with product details)
- */
+// Get all favourites for the logged-in user (populated with product details)
 export const getUserFavourites = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { userId } = req.params;
-
-    if (!userId) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: "userId is required",
-      });
-      return;
-    }
+    const userId = req.user?._id;
 
     const favourites = await Favourite.find({ userId })
       .populate({
@@ -42,27 +32,25 @@ export const getUserFavourites = async (
   }
 };
 
-/**
- * POST /api/v1/favourites
- * Body: { userId, productId }
- */
+// add to favourite
 export const addFavourite = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
-    const { userId, productId } = req.body;
+    const userId = req.user?._id;
+    const { productId } = req.body;
 
-    if (!userId || !productId) {
+    if (!productId) {
       res.status(HTTP_STATUS.BAD_REQUEST).json({
         status: "fail",
-        message: "userId and productId are required",
+        message: "productId is required",
       });
       return;
     }
 
-    // Check product exists
+    // Checking if product exists
     const product = await Product.findById(productId);
     if (!product) {
       res.status(HTTP_STATUS.NOT_FOUND).json({
@@ -72,7 +60,7 @@ export const addFavourite = async (
       return;
     }
 
-    // Check if already favourited (compound index will also prevent dupes)
+    // Checking if product is already favourited (compound index will also prevent dupes)
     const existing = await Favourite.findOne({ userId, productId });
     if (existing) {
       res.status(HTTP_STATUS.CONFLICT).json({
@@ -94,26 +82,15 @@ export const addFavourite = async (
   }
 };
 
-/**
- * DELETE /api/v1/favourites/:productId?userId=xxx
- * Remove a product from user's favourites
- */
+// Removing a product from user's favourites
 export const removeFavourite = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ): Promise<void> => {
   try {
+    const userId = req.user?._id;
     const { productId } = req.params;
-    const { userId } = req.query;
-
-    if (!userId) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: "userId query parameter is required",
-      });
-      return;
-    }
 
     const deleted = await Favourite.findOneAndDelete({
       userId,
