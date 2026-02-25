@@ -17,6 +17,10 @@ const options: swaggerJsdoc.Options = {
         url: "http://localhost:5000/api/v1",
         description: "Local development server",
       },
+      {
+        url: "https://saint-valor-backend.onrender.com/api/v1",
+        description: "Production server",
+      },
     ],
     components: {
       securitySchemes: {
