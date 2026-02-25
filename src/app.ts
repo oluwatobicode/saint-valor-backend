@@ -75,4 +75,3 @@ app.get("/api/v1/categories", productController.getPublicCategories);
 app.use(globalErrorHandler);
 
 export default app;
-

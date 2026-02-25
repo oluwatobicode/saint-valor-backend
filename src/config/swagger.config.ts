@@ -7,7 +7,7 @@ const options: swaggerJsdoc.Options = {
       title: "Saint Valor Jewelry E-Commerce API",
       version: "1.0.0",
       description:
-        "Complete REST API for Saint Valor — a luxury jewelry e-commerce platform. This API handles authentication, product browsing, order management with Paystack payments, favourites, and admin operations.\n\n**Base URL:** `http://localhost:5000/api/v1`\n\n---\n\n## 🔐 Authentication\n\nMost endpoints require a **JWT Bearer token**. After login or signup, you receive a `token` in the response. Include it in all protected requests:\n\n```\nAuthorization: Bearer <your_token_here>\n```\n\n## 💳 Payment Flow (Paystack)\n\n1. **Initialize** → `POST /orders/initialize` → returns a Paystack `authorization_url`\n2. **Redirect** → Send the user to that URL (Paystack handles payment)\n3. **Verify** → After payment, Paystack redirects back with `?reference=xxx`. Call `POST /orders/verify/:reference` with saved order details to create the order.\n\n## 👤 Roles\n\n- **customer** — can browse products, manage favourites, place orders\n- **admin** — can manage products, categories, collections, orders, and view dashboard stats",
+        "Complete REST API for Saint Valor — a luxury jewelry e-commerce platform. This API handles authentication, product browsing, order management with Paystack payments, favourites, and admin operations.\n\n**Base URL:** `http://localhost:5000/api/v1`\n\n**Production URL:** `https://saint-valor-backend.onrender.com/api/v1`\n\n\n## 🔐 Authentication\n\nMost endpoints require a **JWT Bearer token**. After login or signup, you receive a `token` in the response. Include it in all protected requests:\n\n```\nAuthorization: Bearer <your_token_here>\n```\n\n## 💳 Payment Flow (Paystack)\n\n1. **Initialize** → `POST /orders/initialize` → returns a Paystack `authorization_url`\n2. **Redirect** → Send the user to that URL (Paystack handles payment)\n3. **Verify** → After payment, Paystack redirects back with `?reference=xxx`. Call `POST /orders/verify/:reference` with saved order details to create the order.\n\n## 👤 Roles\n\n- **customer** — can browse products, manage favourites, place orders\n- **admin** — can manage products, categories, collections, orders, and view dashboard stats",
       contact: {
         name: "Saint Valor Dev Team",
       },
@@ -51,7 +51,7 @@ const options: swaggerJsdoc.Options = {
             email: {
               type: "string",
               format: "email",
-              example: "treasure@example.com",
+              example: "treasure@gmail.com",
               description: "User's email address (must be unique)",
             },
             password: {
@@ -70,7 +70,7 @@ const options: swaggerJsdoc.Options = {
             email: {
               type: "string",
               format: "email",
-              example: "treasure@example.com",
+              example: "treasure@gmail.com",
             },
             password: {
               type: "string",
@@ -141,7 +141,7 @@ const options: swaggerJsdoc.Options = {
             _id: { type: "string", example: "507f1f77bcf86cd799439011" },
             firstName: { type: "string", example: "Treasure" },
             lastName: { type: "string", example: "Odetokun" },
-            email: { type: "string", example: "treasure@example.com" },
+            email: { type: "string", example: "treasure@gmail.com" },
             phone: { type: "string", example: "+2348012345678" },
             role: {
               type: "string",
