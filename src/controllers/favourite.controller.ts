@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import Favourite from "../models/Favourite";
 import Product from "../models/Product";
 import { HTTP_STATUS } from "../config";
+import AppError from "../utils/AppError";
 import "../types";
 
 // Get all favourites for the logged-in user (populated with product details)
@@ -43,31 +44,21 @@ export const addFavourite = async (
     const { productId } = req.body;
 
     if (!productId) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: "productId is required",
-      });
-      return;
+      return next(new AppError("productId is required", HTTP_STATUS.BAD_REQUEST));
     }
 
     // Checking if product exists
     const product = await Product.findById(productId);
     if (!product) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Product not found",
-      });
-      return;
+      return next(new AppError("Product not found", HTTP_STATUS.NOT_FOUND));
     }
 
     // Checking if product is already favourited (compound index will also prevent dupes)
     const existing = await Favourite.findOne({ userId, productId });
     if (existing) {
-      res.status(HTTP_STATUS.CONFLICT).json({
-        status: "fail",
-        message: "Product is already in your favourites",
-      });
-      return;
+      return next(
+        new AppError("Product is already in your favourites", HTTP_STATUS.CONFLICT),
+      );
     }
 
     const favourite = await Favourite.create({ userId, productId });
@@ -98,11 +89,7 @@ export const removeFavourite = async (
     });
 
     if (!deleted) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Favourite not found",
-      });
-      return;
+      return next(new AppError("Favourite not found", HTTP_STATUS.NOT_FOUND));
     }
 
     res.status(HTTP_STATUS.Ok).json({

@@ -4,12 +4,12 @@ import Collection from "../models/Collection";
 import Product from "../models/Product";
 import Order from "../models/Order";
 import User from "../models/User";
+import Favourite from "../models/Favourite";
 import { HTTP_STATUS } from "../config";
 import { uploadToCloudinary } from "../utils/upload";
+import AppError from "../utils/AppError";
 
-// ─────────────────────────────────────────────
 //  CATEGORY MANAGEMENT
-// ─────────────────────────────────────────────
 
 export const getAllCategories = async (
   req: Request,
@@ -38,20 +38,19 @@ export const createCategory = async (
     const { name } = req.body;
 
     if (!name) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: "Category name is required",
-      });
-      return;
+      return next(
+        new AppError("Category name is required", HTTP_STATUS.BAD_REQUEST),
+      );
     }
 
     const existingCategory = await Category.findOne({ name });
     if (existingCategory) {
-      res.status(HTTP_STATUS.CONFLICT).json({
-        status: "fail",
-        message: "A category with this name already exists",
-      });
-      return;
+      return next(
+        new AppError(
+          "A category with this name already exists",
+          HTTP_STATUS.CONFLICT,
+        ),
+      );
     }
 
     const category = await Category.create({ name });
@@ -76,24 +75,18 @@ export const updateCategory = async (
     const { name } = req.body;
 
     if (!name) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: "Category name is required",
-      });
-      return;
+      return next(
+        new AppError("Category name is required", HTTP_STATUS.BAD_REQUEST),
+      );
     }
 
     const category = await Category.findById(id);
     if (!category) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Category not found",
-      });
-      return;
+      return next(new AppError("Category not found", HTTP_STATUS.NOT_FOUND));
     }
 
     category.name = name;
-    await category.save(); // triggers pre-save hook to regenerate slug
+    await category.save();
 
     res.status(HTTP_STATUS.Ok).json({
       status: "success",
@@ -115,21 +108,18 @@ export const deleteCategory = async (
 
     const category = await Category.findById(id);
     if (!category) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Category not found",
-      });
-      return;
+      return next(new AppError("Category not found", HTTP_STATUS.NOT_FOUND));
     }
 
     // Check if any products reference this category
     const productCount = await Product.countDocuments({ productCategory: id });
     if (productCount > 0) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: `Cannot delete category — ${productCount} product(s) still reference it`,
-      });
-      return;
+      return next(
+        new AppError(
+          `Cannot delete category — ${productCount} product(s) still reference it`,
+          HTTP_STATUS.BAD_REQUEST,
+        ),
+      );
     }
 
     await Category.findByIdAndDelete(id);
@@ -174,20 +164,19 @@ export const createCollection = async (
     const { name } = req.body;
 
     if (!name) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: "Collection name is required",
-      });
-      return;
+      return next(
+        new AppError("Collection name is required", HTTP_STATUS.BAD_REQUEST),
+      );
     }
 
     const existingCollection = await Collection.findOne({ name });
     if (existingCollection) {
-      res.status(HTTP_STATUS.CONFLICT).json({
-        status: "fail",
-        message: "A collection with this name already exists",
-      });
-      return;
+      return next(
+        new AppError(
+          "A collection with this name already exists",
+          HTTP_STATUS.CONFLICT,
+        ),
+      );
     }
 
     // Upload image to Cloudinary if a file was provided
@@ -219,11 +208,7 @@ export const updateCollection = async (
 
     const collection = await Collection.findById(id);
     if (!collection) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Collection not found",
-      });
-      return;
+      return next(new AppError("Collection not found", HTTP_STATUS.NOT_FOUND));
     }
 
     if (name) {
@@ -257,22 +242,19 @@ export const deleteCollection = async (
 
     const collection = await Collection.findById(id);
     if (!collection) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Collection not found",
-      });
-      return;
+      return next(new AppError("Collection not found", HTTP_STATUS.NOT_FOUND));
     }
 
     const productCount = await Product.countDocuments({
       productCollection: id,
     });
     if (productCount > 0) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: `Cannot delete collection — ${productCount} product(s) still reference it`,
-      });
-      return;
+      return next(
+        new AppError(
+          `Cannot delete collection — ${productCount} product(s) still reference it`,
+          HTTP_STATUS.BAD_REQUEST,
+        ),
+      );
     }
 
     await Collection.findByIdAndDelete(id);
@@ -414,12 +396,12 @@ export const createProduct = async (
       !productMaterial ||
       !mainImage
     ) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message:
+      return next(
+        new AppError(
           "Please provide all required product fields (including at least 1 image)",
-      });
-      return;
+          HTTP_STATUS.BAD_REQUEST,
+        ),
+      );
     }
 
     // Parse sizes if sent as JSON string (multipart/form-data)
@@ -428,12 +410,12 @@ export const createProduct = async (
       try {
         parsedSizes = JSON.parse(productSizes);
       } catch {
-        res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: "fail",
-          message:
+        return next(
+          new AppError(
             'Invalid productSizes format. Must be valid JSON, e.g. [{"size":"Small","quantity":5}]',
-        });
-        return;
+            HTTP_STATUS.BAD_REQUEST,
+          ),
+        );
       }
     } else {
       parsedSizes = productSizes;
@@ -487,11 +469,7 @@ export const updateProduct = async (
       .populate("productCollection", "name slug");
 
     if (!product) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Product not found",
-      });
-      return;
+      return next(new AppError("Product not found", HTTP_STATUS.NOT_FOUND));
     }
 
     res.status(HTTP_STATUS.Ok).json({
@@ -514,12 +492,11 @@ export const deleteProduct = async (
 
     const product = await Product.findByIdAndDelete(id);
     if (!product) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Product not found",
-      });
-      return;
+      return next(new AppError("Product not found", HTTP_STATUS.NOT_FOUND));
     }
+
+    // Clean up any Favourite documents that reference the deleted product
+    await Favourite.deleteMany({ productId: id });
 
     res.status(HTTP_STATUS.Ok).json({
       status: "success",
@@ -530,9 +507,7 @@ export const deleteProduct = async (
   }
 };
 
-// ─────────────────────────────────────────────
 //  ORDER MANAGEMENT
-// ─────────────────────────────────────────────
 
 export const getAdminOrders = async (
   req: Request,
@@ -592,11 +567,7 @@ export const getAdminOrder = async (
     );
 
     if (!order) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Order not found",
-      });
-      return;
+      return next(new AppError("Order not found", HTTP_STATUS.NOT_FOUND));
     }
 
     res.status(HTTP_STATUS.Ok).json({
@@ -619,11 +590,12 @@ export const updateOrderStatus = async (
 
     const allowedStatuses = ["ongoing", "completed", "cancelled"];
     if (!status || !allowedStatuses.includes(status)) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: `Invalid status. Allowed values: ${allowedStatuses.join(", ")}`,
-      });
-      return;
+      return next(
+        new AppError(
+          `Invalid status. Allowed values: ${allowedStatuses.join(", ")}`,
+          HTTP_STATUS.BAD_REQUEST,
+        ),
+      );
     }
 
     const order = await Order.findByIdAndUpdate(
@@ -633,11 +605,7 @@ export const updateOrderStatus = async (
     ).populate("user", "firstName lastName email");
 
     if (!order) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Order not found",
-      });
-      return;
+      return next(new AppError("Order not found", HTTP_STATUS.NOT_FOUND));
     }
 
     res.status(HTTP_STATUS.Ok).json({
@@ -650,9 +618,7 @@ export const updateOrderStatus = async (
   }
 };
 
-// ─────────────────────────────────────────────
 //  DASHBOARD STATS
-// ─────────────────────────────────────────────
 
 export const getDashboardStats = async (
   req: Request,
@@ -695,9 +661,7 @@ export const getDashboardStats = async (
   }
 };
 
-// ─────────────────────────────────────────────
 //  USER MANAGEMENT
-// ─────────────────────────────────────────────
 
 export const getAdminUsers = async (
   req: Request,
@@ -761,11 +725,7 @@ export const getAdminUserDetail = async (
 
     const user = await User.findById(id).select("-password");
     if (!user) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "User not found",
-      });
-      return;
+      return next(new AppError("User not found", HTTP_STATUS.NOT_FOUND));
     }
 
     // Get orders split into ongoing and past

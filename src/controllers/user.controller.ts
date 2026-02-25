@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import User from "../models/User";
 import { HTTP_STATUS } from "../config";
+import AppError from "../utils/AppError";
 
 // get all users
 export const allUsers = async (
@@ -52,11 +53,7 @@ export const getAUser = async (
     const userDetail = await User.findById(id);
 
     if (!userDetail) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "There is no data here",
-      });
-      return;
+      return next(new AppError("User not found", HTTP_STATUS.NOT_FOUND));
     }
 
     if (userDetail) {

@@ -4,12 +4,12 @@ import { authMiddleware } from "../middleware/auth.middlware";
 
 const router = Router();
 
-// Payment flow (protected)
+// All order routes require authentication
+
 router.post("/initialize", authMiddleware, orderController.initializeOrder);
 router.post("/verify/:reference", authMiddleware, orderController.verifyOrder);
 
-// Existing (protected)
-router.post("/", authMiddleware, orderController.createOrder);
+// Order retrieval
 router.get("/", authMiddleware, orderController.getAllOrders);
 router.get("/me", authMiddleware, orderController.getUserOrders);
 router.get("/:id", authMiddleware, orderController.getOrderById);

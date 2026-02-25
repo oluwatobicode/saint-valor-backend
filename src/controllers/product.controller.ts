@@ -3,6 +3,7 @@ import Product from "../models/Product";
 import Category from "../models/Category";
 import Collection from "../models/Collection";
 import { HTTP_STATUS } from "../config";
+import AppError from "../utils/AppError";
 
 // get all products with advanced filters (collection, category, jewelryType, material, karat, weight, size, priceMin/priceMax, search)
 export const getAllProducts = async (
@@ -95,11 +96,7 @@ export const getProduct = async (
       .populate("productCollection", "name slug");
 
     if (!product) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "Product not found",
-      });
-      return;
+      return next(new AppError("Product not found", HTTP_STATUS.NOT_FOUND));
     }
 
     res.status(HTTP_STATUS.Ok).json({

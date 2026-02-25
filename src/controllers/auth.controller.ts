@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User";
 import { HTTP_STATUS } from "../config";
 import { config } from "../config/app.config";
+import AppError from "../utils/AppError";
 import "../types";
 
 // helper to sign a JWT token
@@ -24,21 +25,31 @@ export const signup = async (
     const { firstName, lastName, email, password } = req.body;
 
     if (!firstName || !lastName || !email || !password) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: "Please provide all fields",
-      });
-      return;
+      return next(new AppError("Please provide all fields", HTTP_STATUS.BAD_REQUEST));
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return next(
+        new AppError("Please provide a valid email address", HTTP_STATUS.BAD_REQUEST),
+      );
+    }
+
+    // Validate password minimum length
+    if (password.length < 8) {
+      return next(
+        new AppError(
+          "Password must be at least 8 characters long",
+          HTTP_STATUS.BAD_REQUEST,
+        ),
+      );
     }
 
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      res.status(HTTP_STATUS.CONFLICT).json({
-        status: "fail",
-        message: "Email already exists",
-      });
-      return;
+      return next(new AppError("Email already exists", HTTP_STATUS.CONFLICT));
     }
 
     const newUser = await User.create({
@@ -84,21 +95,15 @@ export const login = async (
     const { email, password } = req.body;
 
     if (!email || !password) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: "fail",
-        message: "Please provide email and password",
-      });
-      return;
+      return next(
+        new AppError("Please provide email and password", HTTP_STATUS.BAD_REQUEST),
+      );
     }
 
     const user = await User.findOne({ email }).select("+password");
 
     if (!user || !(await user.correctPassword(password))) {
-      res.status(HTTP_STATUS.UNAUTHORIZED).json({
-        status: "fail",
-        message: "Invalid credentials",
-      });
-      return;
+      return next(new AppError("Invalid credentials", HTTP_STATUS.UNAUTHORIZED));
     }
 
     const token = signToken(user._id.toString(), user.email, user.role);
@@ -133,11 +138,7 @@ export const getMe = async (
     const user = await User.findById(req.user?._id).select("-password");
 
     if (!user) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "User not found",
-      });
-      return;
+      return next(new AppError("User not found", HTTP_STATUS.NOT_FOUND));
     }
 
     res.status(HTTP_STATUS.Ok).json({
@@ -170,11 +171,7 @@ export const updateProfile = async (
     ).select("-password");
 
     if (!updatedUser) {
-      res.status(HTTP_STATUS.NOT_FOUND).json({
-        status: "fail",
-        message: "User not found",
-      });
-      return;
+      return next(new AppError("User not found", HTTP_STATUS.NOT_FOUND));
     }
 
     res.status(HTTP_STATUS.Ok).json({
