@@ -187,7 +187,17 @@ const options: swaggerJsdoc.Options = {
             },
             productJewelryType: {
               type: "string",
-              example: "Ring",
+              enum: [
+                "Rings",
+                "Necklaces",
+                "Earrings",
+                "Bracelets",
+                "Pant Chains",
+                "Anklets",
+              ],
+              example: "Rings",
+              description:
+                "Type of jewelry. Allowed values: Rings, Necklaces, Earrings, Bracelets, Pant Chains, Anklets.",
             },
             productMaterial: { type: "string", example: "Gold" },
             productKarat: { type: "string", example: "18k" },
@@ -663,8 +673,19 @@ const options: swaggerJsdoc.Options = {
             {
               name: "type",
               in: "query",
-              schema: { type: "string" },
-              description: "Filter by jewelry type (e.g. 'Ring', 'Necklace')",
+              schema: {
+                type: "string",
+                enum: [
+                  "Rings",
+                  "Necklaces",
+                  "Earrings",
+                  "Bracelets",
+                  "Pant Chains",
+                  "Anklets",
+                ],
+              },
+              description:
+                "Filter by jewelry type. Allowed values: Rings, Necklaces, Earrings, Bracelets, Pant Chains, Anklets.",
             },
             {
               name: "material",
@@ -1269,7 +1290,7 @@ const options: swaggerJsdoc.Options = {
           tags: ["Admin - Products"],
           summary: "Create a new product",
           description:
-            'Creates a new product with image uploads. Use `multipart/form-data`.\n\n**Image fields:**\n- `mainImage` — required, the primary product image\n- `otherImages` — optional, up to 4 additional images\n\n**Note:** `productSizes` should be sent as a JSON string array, e.g. `\'["Small", "Medium", "Large"]\'`',
+            'Creates a new product with image uploads. Use `multipart/form-data`.\n\n**Image upload:**\n- Send up to **6 files** in the `images` field (1 main image + up to 5 additional images).\n- The backend will treat the **first** file in `images` as the main image and the rest as sub-images.\n\n**Note:** `productSizes` should be sent as a JSON string array, e.g. `\'[{"size":"Small","quantity":5}]\'`',
           security: [{ BearerAuth: [] }],
           requestBody: {
             required: true,
@@ -1282,7 +1303,7 @@ const options: swaggerJsdoc.Options = {
                     "productDescription",
                     "productPrice",
                     "productCategory",
-                    "mainImage",
+                    "images",
                   ],
                   properties: {
                     productName: {
@@ -1294,13 +1315,28 @@ const options: swaggerJsdoc.Options = {
                       example: "A stunning 18k gold ring",
                     },
                     productPrice: { type: "number", example: 150000 },
-                    productJewelryType: { type: "string", example: "Ring" },
+                    productJewelryType: {
+                      type: "string",
+                      enum: [
+                        "Rings",
+                        "Necklaces",
+                        "Earrings",
+                        "Bracelets",
+                        "Pant Chains",
+                        "Anklets",
+                      ],
+                      example: "Rings",
+                      description:
+                        "Type of jewelry. Allowed values: Rings, Necklaces, Earrings, Bracelets, Pant Chains, Anklets.",
+                    },
                     productMaterial: { type: "string", example: "Gold" },
                     productKarat: { type: "string", example: "18k" },
                     productSizes: {
                       type: "string",
-                      example: '["Small", "Medium", "Large"]',
-                      description: "JSON string array of available sizes",
+                      example:
+                        '[{"size":"Small","quantity":5},{"size":"Medium","quantity":3}]',
+                      description:
+                        "JSON string array of size objects with quantity",
                     },
                     productCategory: {
                       type: "string",
@@ -1310,15 +1346,11 @@ const options: swaggerJsdoc.Options = {
                       type: "string",
                       description: "Collection MongoDB _id (optional)",
                     },
-                    mainImage: {
-                      type: "string",
-                      format: "binary",
-                      description: "Main product image (required)",
-                    },
-                    otherImages: {
+                    images: {
                       type: "array",
                       items: { type: "string", format: "binary" },
-                      description: "Up to 4 additional images",
+                      description:
+                        "Product images. First file is used as main image; remaining files as sub-images (max 6 files).",
                     },
                   },
                 },

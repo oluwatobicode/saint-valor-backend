@@ -5,7 +5,7 @@ import rateLimit from "express-rate-limit";
 
 const router = Router();
 
-// // app rate limit
+// app rate limit
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 5,
@@ -17,7 +17,7 @@ const authLimiter = rateLimit({
 // Public routes
 router.post("/signup", authController.signup);
 router.post("/login", authLimiter, authController.login);
-// router.post("/login", authController.login);
+
 // Protected routes (require login)
 router.get("/me", authMiddleware, authController.getMe);
 router.put("/profile", authMiddleware, authController.updateProfile);

@@ -26,6 +26,7 @@ export const getAllCategories = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -62,6 +63,7 @@ export const createCategory = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -95,6 +97,7 @@ export const updateCategory = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -130,6 +133,7 @@ export const deleteCategory = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -152,6 +156,7 @@ export const getAllCollections = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -194,6 +199,7 @@ export const createCollection = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -229,6 +235,7 @@ export const updateCollection = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -265,6 +272,7 @@ export const deleteCollection = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -349,6 +357,7 @@ export const getAdminProducts = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -445,6 +454,7 @@ export const createProduct = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -479,6 +489,7 @@ export const updateProduct = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -504,6 +515,7 @@ export const deleteProduct = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -550,6 +562,7 @@ export const getAdminOrders = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -576,6 +589,7 @@ export const getAdminOrder = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -615,6 +629,7 @@ export const updateOrderStatus = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -658,6 +673,7 @@ export const getDashboardStats = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -712,6 +728,7 @@ export const getAdminUsers = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };
 
@@ -748,5 +765,6 @@ export const getAdminUserDetail = async (
     });
   } catch (error) {
     next(error);
+    console.log(error);
   }
 };

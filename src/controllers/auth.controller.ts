@@ -25,14 +25,19 @@ export const signup = async (
     const { firstName, lastName, email, password } = req.body;
 
     if (!firstName || !lastName || !email || !password) {
-      return next(new AppError("Please provide all fields", HTTP_STATUS.BAD_REQUEST));
+      return next(
+        new AppError("Please provide all fields", HTTP_STATUS.BAD_REQUEST),
+      );
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return next(
-        new AppError("Please provide a valid email address", HTTP_STATUS.BAD_REQUEST),
+        new AppError(
+          "Please provide a valid email address",
+          HTTP_STATUS.BAD_REQUEST,
+        ),
       );
     }
 
@@ -96,14 +101,19 @@ export const login = async (
 
     if (!email || !password) {
       return next(
-        new AppError("Please provide email and password", HTTP_STATUS.BAD_REQUEST),
+        new AppError(
+          "Please provide email and password",
+          HTTP_STATUS.BAD_REQUEST,
+        ),
       );
     }
 
     const user = await User.findOne({ email }).select("+password");
 
     if (!user || !(await user.correctPassword(password))) {
-      return next(new AppError("Invalid credentials", HTTP_STATUS.UNAUTHORIZED));
+      return next(
+        new AppError("Invalid credentials", HTTP_STATUS.UNAUTHORIZED),
+      );
     }
 
     const token = signToken(user._id.toString(), user.email, user.role);
@@ -158,6 +168,15 @@ export const updateProfile = async (
 ): Promise<void> => {
   try {
     const { firstName, lastName, phone, address } = req.body;
+
+    if (!req.body) {
+      return next(
+        new AppError(
+          "Please provide first name and last name",
+          HTTP_STATUS.BAD_REQUEST,
+        ),
+      );
+    }
 
     const updatedUser = await User.findByIdAndUpdate(
       req.user?._id,
