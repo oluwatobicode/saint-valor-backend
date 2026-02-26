@@ -33,7 +33,14 @@ const app: Application = express();
 
 // Middleware
 app.use(helmet());
-app.use(cors({ origin: process.env.ALLOWED_ORIGIN }));
+app.use(
+  cors({
+    origin: process.env.ALLOWED_ORIGIN,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
