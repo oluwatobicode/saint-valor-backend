@@ -72,7 +72,7 @@ app.use("/api/v1/admin", adminRoutes);
 app.use("/api/v1/products", productRoutes);
 app.use("/api/v1/favourites", favouriteRoutes);
 
-// Standalone public product endpoints
+//  public product endpoints
 app.get("/api/v1/new-arrivals", productController.getNewArrivals);
 app.get("/api/v1/best-sellers", productController.getBestSellers);
 app.get("/api/v1/collections", productController.getPublicCollections);

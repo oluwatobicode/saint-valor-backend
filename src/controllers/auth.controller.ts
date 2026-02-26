@@ -5,6 +5,7 @@ import { HTTP_STATUS } from "../config";
 import { config } from "../config/app.config";
 import AppError from "../utils/AppError";
 import "../types";
+import { sendWelcomeEmail } from "../services/email.service";
 
 // helper to sign a JWT token
 const signToken = (userId: string, email: string, role: string): string => {
@@ -84,6 +85,8 @@ export const signup = async (
         },
       },
     });
+
+    sendWelcomeEmail(email);
   } catch (error) {
     console.error(error);
     next(error);
