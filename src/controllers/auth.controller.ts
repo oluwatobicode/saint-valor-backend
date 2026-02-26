@@ -71,6 +71,8 @@ export const signup = async (
       newUser.role,
     );
 
+    sendWelcomeEmail(newUser.email, newUser.firstName);
+
     res.status(HTTP_STATUS.CREATED).json({
       status: "success",
       message: "Account created successfully",
@@ -85,8 +87,6 @@ export const signup = async (
         },
       },
     });
-
-    sendWelcomeEmail(email);
   } catch (error) {
     console.error(error);
     next(error);
@@ -125,15 +125,6 @@ export const login = async (
       status: "success",
       message: "Login successful",
       token,
-      data: {
-        user: {
-          id: user._id,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          email: user.email,
-          role: user.role,
-        },
-      },
     });
   } catch (error) {
     console.error(error);
