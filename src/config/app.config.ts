@@ -10,7 +10,7 @@ export const config = {
   paystackSecretKey: process.env.PAYSTACK_SECRET_KEY,
   paystackPublicKey: process.env.PAYSTACK_PUBLIC_KEY,
   paystackCallbackUrl:
-    process.env.PAYSTACK_CALLBACK_URL || "http://localhost:5173/verify-payment",
+    process.env.PAYSTACK_CALLBACK_URL || "http://localhost:3000/verify-payment",
   cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY,
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET,
