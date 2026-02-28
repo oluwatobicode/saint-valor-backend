@@ -77,5 +77,16 @@ const orderSchema = new mongoose.Schema(
   },
 );
 
+// Auto-delete pending orders after 24 hours — prevents ghost orders from
+// users who started checkout but never completed payment.
+// Only affects orders where paymentStatus is still "pending".
+orderSchema.index(
+  { createdAt: 1 },
+  {
+    expireAfterSeconds: 86400,
+    partialFilterExpression: { paymentStatus: "pending" },
+  },
+);
+
 const Order = mongoose.model("order", orderSchema);
 export default Order;

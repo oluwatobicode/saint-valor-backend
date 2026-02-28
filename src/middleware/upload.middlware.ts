@@ -2,7 +2,7 @@ import multer from "multer";
 import { Request } from "express";
 import { UPLOAD } from "../config";
 
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
 
 // Store files in memory (buffer) — we upload to Cloudinary, not disk
 const storage = multer.memoryStorage();

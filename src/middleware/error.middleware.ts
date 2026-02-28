@@ -8,7 +8,6 @@ function isDuplicateKeyError(err: unknown): err is {
   code: number;
   keyValue?: Record<string, unknown>;
 } {
-  console.log(err);
   return (
     typeof err === "object" &&
     err !== null &&
@@ -21,7 +20,6 @@ function isMongooseValidationError(err: unknown): err is {
   name: "ValidationError";
   errors: Record<string, { path?: string; message?: string }>;
 } {
-  console.log(err);
   return (
     typeof err === "object" &&
     err !== null &&
@@ -36,7 +34,6 @@ function isMongooseCastError(err: unknown): err is {
   value?: unknown;
   message?: string;
 } {
-  console.log(err);
   return (
     typeof err === "object" &&
     err !== null &&
@@ -45,7 +42,6 @@ function isMongooseCastError(err: unknown): err is {
 }
 
 function isJwtError(err: unknown): err is { name: string } {
-  console.log(err);
   return typeof err === "object" && err !== null && "name" in err;
 }
 

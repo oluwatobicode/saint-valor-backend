@@ -7,7 +7,7 @@ const options: swaggerJsdoc.Options = {
       title: "Saint Valor Jewelry E-Commerce API",
       version: "1.0.0",
       description:
-        "Complete REST API for Saint Valor — a luxury jewelry e-commerce platform. This API handles authentication, product browsing, order management with Paystack payments, favourites, and admin operations.\n\n**Base URL:** `http://localhost:5000/api/v1`\n\n**Production URL:** `https://saint-valor-backend.onrender.com/api/v1`\n\n\n## 🔐 Authentication\n\nMost endpoints require a **JWT Bearer token**. After login or signup, you receive a `token` in the response. Include it in all protected requests:\n\n```\nAuthorization: Bearer <your_token_here>\n```\n\n## 💳 Payment Flow (Paystack)\n\n1. **Initialize** → `POST /orders/initialize` → returns a Paystack `authorization_url`\n2. **Redirect** → Send the user to that URL (Paystack handles payment)\n3. **Verify** → After payment, Paystack redirects back with `?reference=xxx`. Call `POST /orders/verify/:reference` with saved order details to create the order.\n\n## 👤 Roles\n\n- **customer** — can browse products, manage favourites, place orders\n- **admin** — can manage products, categories, collections, orders, and view dashboard stats",
+        "Complete REST API for Saint Valor — a luxury jewelry e-commerce platform. This API handles authentication, product browsing, order management with Paystack payments, favourites, and admin operations.\n\n**Base URL:** `http://localhost:5000/api/v1`\n\n**Production URL:** `https://saint-valor-backend.onrender.com/api/v1`\n\n## 🔐 Authentication Flow\n\n**Signup → Verify Email → Login**\n1. `POST /auth/signup` — creates account, sends 6-digit OTP to email\n2. `POST /auth/verify-email` — validates OTP, returns JWT token\n3. `POST /auth/login` — for returning users (blocked until email is verified)\n\nFor all protected requests, pass the JWT as:\n```\nAuthorization: Bearer <your_token_here>\n```\n\n## 💳 Payment Flow (Paystack)\n\n1. **Initialize** → `POST /orders/initialize` → order saved, returns Paystack `authorization_url`\n2. **Redirect** → Send the user to that URL (Paystack handles payment)\n3. **Verify** → After payment, Paystack redirects back with `?reference=xxx`. Call `POST /orders/verify/:reference` — no body needed, all data was saved at step 1.\n\n## 👤 Roles\n\n- **customer** — can browse products, manage favourites, place orders\n- **admin** — can manage products, categories, collections, orders, and view dashboard stats",
       contact: {
         name: "Saint Valor Dev Team",
       },
@@ -79,6 +79,46 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
+        // Response after a successful signup (OTP sent, no JWT)
+        SignupResponse: {
+          type: "object",
+          properties: {
+            status: { type: "string", example: "success" },
+            message: {
+              type: "string",
+              example:
+                "Account created. A 6-digit verification code has been sent to your email.",
+            },
+            data: {
+              type: "object",
+              properties: {
+                email: {
+                  type: "string",
+                  example: "treasure@gmail.com",
+                  description: "The email address the OTP was sent to",
+                },
+              },
+            },
+          },
+        },
+        // Verify email request
+        VerifyEmailRequest: {
+          type: "object",
+          required: ["email", "otp"],
+          properties: {
+            email: {
+              type: "string",
+              format: "email",
+              example: "treasure@gmail.com",
+            },
+            otp: {
+              type: "string",
+              example: "482910",
+              description: "6-digit code sent to the user's email",
+            },
+          },
+        },
+        // Response with JWT token (login or verify-email)
         AuthResponse: {
           type: "object",
           properties: {
@@ -99,10 +139,7 @@ const options: swaggerJsdoc.Options = {
                     id: { type: "string", example: "507f1f77bcf86cd799439011" },
                     firstName: { type: "string", example: "Treasure" },
                     lastName: { type: "string", example: "Odetokun" },
-                    email: {
-                      type: "string",
-                      example: "treasure@example.com",
-                    },
+                    email: { type: "string", example: "treasure@example.com" },
                     role: {
                       type: "string",
                       enum: ["customer", "admin"],
@@ -147,6 +184,11 @@ const options: swaggerJsdoc.Options = {
               type: "string",
               enum: ["customer", "admin"],
               example: "customer",
+            },
+            isVerified: {
+              type: "boolean",
+              example: true,
+              description: "Whether the user has verified their email address",
             },
             address: {
               type: "object",
@@ -207,8 +249,17 @@ const options: swaggerJsdoc.Options = {
             productKarat: { type: "string", example: "18k" },
             productSizes: {
               type: "array",
-              items: { type: "string" },
-              example: ["Small", "Medium", "Large"],
+              description: "Array of available sizes with stock quantities",
+              items: {
+                type: "object",
+                properties: {
+                  size: {
+                    type: "string",
+                    enum: ["Small", "Medium", "Large"],
+                  },
+                  quantity: { type: "integer", example: 10 },
+                },
+              },
             },
             productCategory: {
               type: "object",
@@ -356,37 +407,8 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
-        VerifyOrderRequest: {
-          type: "object",
-          required: [
-            "items",
-            "firstName",
-            "lastName",
-            "phoneNumber",
-            "address",
-            "country",
-            "state",
-            "city",
-            "shippingMethod",
-          ],
-          description:
-            "Send back the same orderDetails you saved from the initialize step. This is needed because the order only gets created in the database after payment is verified.",
-          properties: {
-            items: {
-              type: "array",
-              items: { $ref: "#/components/schemas/OrderItem" },
-            },
-            firstName: { type: "string", example: "Treasure" },
-            lastName: { type: "string", example: "Odetokun" },
-            countryCode: { type: "string", example: "+234" },
-            phoneNumber: { type: "string", example: "08012345678" },
-            address: { type: "string", example: "123 Lagos St" },
-            country: { type: "string", example: "Nigeria" },
-            state: { type: "string", example: "Lagos" },
-            city: { type: "string", example: "Lekki" },
-            shippingMethod: { type: "string", example: "standard" },
-          },
-        },
+        // VerifyOrderRequest removed — verify-order endpoint takes NO body.
+        // All order data is already saved in the DB at initialize time.
         Order: {
           type: "object",
           properties: {
@@ -510,28 +532,35 @@ const options: swaggerJsdoc.Options = {
       "/auth/signup": {
         post: {
           tags: ["Auth"],
-          summary: "Create a new account",
+          summary: "Step 1: Create account (sends OTP to email)",
           description:
-            "Creates a new user account. Returns a JWT token that you should save and use in all future requests.\n\n**Frontend implementation:**\n1. Send signup data\n2. Save the returned `token` (e.g. in localStorage)\n3. Use it as `Authorization: Bearer <token>` in headers for all protected API calls",
+            "Creates a new user account and sends a **6-digit verification code** to the provided email. No JWT is returned yet.\n\n**Frontend flow:**\n1. Call this endpoint with user details\n2. Redirect the user to an OTP input screen\n3. User types the code from their email → call `POST /auth/verify-email`\n4. On success, save the returned JWT token\n\n**Rate limited:** 10 requests per 15 minutes per IP.",
           requestBody: {
             required: true,
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/SignupRequest" },
+                example: {
+                  firstName: "Treasure",
+                  lastName: "Odetokun",
+                  email: "treasure@gmail.com",
+                  password: "Password123!",
+                },
               },
             },
           },
           responses: {
             "201": {
-              description: "Account created successfully",
+              description: "Account created — OTP sent to email",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/AuthResponse" },
+                  schema: { $ref: "#/components/schemas/SignupResponse" },
                 },
               },
             },
             "400": {
-              description: "Missing required fields",
+              description:
+                "Validation error (missing fields, invalid email, short password)",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ErrorResponse" },
@@ -539,22 +568,91 @@ const options: swaggerJsdoc.Options = {
               },
             },
             "409": {
-              description: "Email already exists",
+              description: "Email already registered",
               content: {
                 "application/json": {
                   schema: { $ref: "#/components/schemas/ErrorResponse" },
                 },
               },
             },
+            "429": { description: "Too many requests — rate limit hit" },
+          },
+        },
+      },
+      "/auth/verify-email": {
+        post: {
+          tags: ["Auth"],
+          summary: "Step 2: Verify email with OTP (returns JWT)",
+          description:
+            "Validates the 6-digit code sent to the user's email during signup. On success, returns the JWT token to use for all authenticated requests.\n\n**OTP expires after 10 minutes.** If it has expired, call `POST /auth/resend-otp` to get a new one.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/VerifyEmailRequest" },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Email verified — JWT token issued",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/AuthResponse" },
+                },
+              },
+            },
+            "400": {
+              description: "Invalid or expired OTP",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                },
+              },
+            },
+            "404": { description: "Email not found" },
+            "429": { description: "Too many requests" },
+          },
+        },
+      },
+      "/auth/resend-otp": {
+        post: {
+          tags: ["Auth"],
+          summary: "Resend verification OTP",
+          description:
+            "Generates a new 6-digit OTP and sends it to the user's email. Use this when the original OTP has expired or the email was not received.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["email"],
+                  properties: {
+                    email: {
+                      type: "string",
+                      format: "email",
+                      example: "treasure@gmail.com",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "200": { description: "New OTP sent" },
+            "400": { description: "Email already verified" },
+            "404": { description: "Email not found" },
+            "429": { description: "Too many requests" },
           },
         },
       },
       "/auth/login": {
         post: {
           tags: ["Auth"],
-          summary: "Login to existing account",
+          summary: "Login to existing account (email must be verified first)",
           description:
-            "Authenticates the user and returns a JWT token.\n\n**Frontend implementation:**\n1. Send email and password\n2. Save the returned `token` (e.g. in localStorage)\n3. Use it as `Authorization: Bearer <token>` in headers for all protected API calls",
+            "Authenticates the user and returns a JWT token.\n\n**Important:** Login is blocked for accounts that have not completed email verification. If you get a `403`, the user needs to verify their email via `POST /auth/verify-email`.\n\n**Rate limited:** 10 requests per 15 minutes per IP.",
           requestBody: {
             required: true,
             content: {
@@ -573,7 +671,12 @@ const options: swaggerJsdoc.Options = {
               },
             },
             "400": { description: "Missing email or password" },
-            "401": { description: "Invalid credentials" },
+            "401": { description: "Invalid email or password" },
+            "403": {
+              description:
+                "Email not verified — user must complete OTP verification first",
+            },
+            "429": { description: "Too many login attempts" },
           },
         },
       },
@@ -647,7 +750,7 @@ const options: swaggerJsdoc.Options = {
           tags: ["Products"],
           summary: "Get all products (with filters & pagination)",
           description:
-            "Returns a paginated list of products. Supports multiple filters that can be combined.\n\n**No authentication required** — this is a public endpoint.\n\n**Pagination:** Use `page` and `limit` query params. Response includes `totalItems`, `totalPages`, and `currentPage` for building pagination UI.\n\n**Filtering examples:**\n- By category: `?category=rings`\n- By collection: `?collection=summer-2024`\n- By price range: `?minPrice=50000&maxPrice=200000`\n- Search by name: `?search=gold`\n- Combined: `?category=rings&material=Gold&minPrice=50000`",
+            "Returns a paginated list of products. Supports multiple filters that can be combined.\n\n**No authentication required** — this is a public endpoint.\n\n**Pagination:** Use `page` and `limit` query params. Response includes `totalItems`, `totalPages`, and `currentPage` for building pagination UI.\n\n**Filtering examples:**\n- By category: `?category=rings`\n- By collection: `?collection=summer-2024`\n- By price range: `?minPrice=50000&maxPrice=200000`\n- In-stock only: `?inStock=true`\n- Search by name: `?search=gold`\n- Combined: `?category=rings&material=Gold&inStock=true`",
           parameters: [
             {
               name: "page",
@@ -721,6 +824,13 @@ const options: swaggerJsdoc.Options = {
               schema: { type: "string" },
               description:
                 "Search by product name (case-insensitive, partial match)",
+            },
+            {
+              name: "inStock",
+              in: "query",
+              schema: { type: "boolean" },
+              description:
+                "If true, only return products where at least one size has quantity > 0",
             },
           ],
           responses: {
@@ -880,9 +990,9 @@ const options: swaggerJsdoc.Options = {
       "/orders/verify/{reference}": {
         post: {
           tags: ["Orders"],
-          summary: "Step 3: Verify payment and create order",
+          summary: "Step 2: Verify payment and confirm order",
           description:
-            "**This is the final step of the payment flow.**\n\nAfter the customer pays on Paystack, they are redirected back to your app at:\n`{callback_url}?reference=SV-PAY-xxxx`\n\nGrab the `reference` from the URL and call this endpoint with the orderDetails you saved in Step 1.\n\n**Frontend implementation:**\n```javascript\n// On the /verify-payment page:\nconst reference = new URLSearchParams(window.location.search).get('reference');\nconst orderDetails = JSON.parse(localStorage.getItem('pendingOrder'));\n\nconst res = await fetch(`/api/v1/orders/verify/${reference}`, {\n  method: 'POST',\n  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ...' },\n  body: JSON.stringify(orderDetails)\n});\n\nconst data = await res.json();\nif (data.status === 'success') {\n  localStorage.removeItem('pendingOrder');\n  // Show success page!\n}\n```\n\n**What this endpoint does:**\n1. Checks if the payment reference was already used (prevents double orders)\n2. Calls Paystack API to verify the payment was successful\n3. If paid, creates the order in the database with status 'ongoing'\n4. Returns the created order",
+            "**This is the final step of the payment flow. No request body is needed.**\n\nAfter the customer pays on Paystack, they are redirected back to your app at:\n`{callback_url}?reference=SV-PAY-xxxx`\n\nGrab the `reference` from the URL and call this endpoint (no body required — all order data was already saved in the DB during initialize).\n\n**Frontend implementation:**\n```javascript\n// On the /verify-payment page:\nconst reference = new URLSearchParams(window.location.search).get('reference');\n\nconst res = await fetch(`/api/v1/orders/verify/${reference}`, {\n  method: 'POST',\n  headers: { 'Authorization': 'Bearer ...' }\n  // No body needed!\n});\n\nconst data = await res.json();\nif (data.status === 'success') {\n  // Show order success page!\n}\n```\n\n**What this endpoint does:**\n1. Finds the pending order in the DB by Paystack reference\n2. Checks ownership (your order only)\n3. Calls Paystack API to verify payment was successful\n4. If payment failed, restores reserved stock\n5. If paid: marks order as 'ongoing', increments salesCount, sends confirmation email",
           security: [{ BearerAuth: [] }],
           parameters: [
             {
@@ -890,22 +1000,13 @@ const options: swaggerJsdoc.Options = {
               in: "path",
               required: true,
               schema: { type: "string" },
-              description:
-                "The Paystack reference from the redirect URL (e.g. SV-PAY-1771925129044-yo6ha)",
+              description: "The Paystack reference from the redirect URL",
               example: "SV-PAY-1771925129044-yo6ha",
             },
           ],
-          requestBody: {
-            required: true,
-            content: {
-              "application/json": {
-                schema: { $ref: "#/components/schemas/VerifyOrderRequest" },
-              },
-            },
-          },
           responses: {
-            "201": {
-              description: "Payment verified, order created",
+            "200": {
+              description: "Payment verified, order confirmed",
               content: {
                 "application/json": {
                   schema: {
@@ -914,7 +1015,7 @@ const options: swaggerJsdoc.Options = {
                       status: { type: "string", example: "success" },
                       message: {
                         type: "string",
-                        example: "Payment verified and order created",
+                        example: "Payment verified and order confirmed",
                       },
                       data: {
                         type: "object",
@@ -929,6 +1030,8 @@ const options: swaggerJsdoc.Options = {
             },
             "400": { description: "Payment verification failed" },
             "401": { description: "Not logged in" },
+            "403": { description: "Order does not belong to you" },
+            "404": { description: "Order not found for this reference" },
           },
         },
       },
@@ -1206,7 +1309,7 @@ const options: swaggerJsdoc.Options = {
                     image: {
                       type: "string",
                       format: "binary",
-                      description: "Image file (JPEG, PNG, or WebP, max 2MB)",
+                      description: "Image file (JPEG, PNG, or WebP, max 5MB)",
                     },
                   },
                 },
@@ -1294,7 +1397,7 @@ const options: swaggerJsdoc.Options = {
           tags: ["Admin - Products"],
           summary: "Create a new product",
           description:
-            'Creates a new product with image uploads. Use `multipart/form-data`.\n\n**Image upload:**\n- Send up to **6 files** in the `images` field (1 main image + up to 5 additional images).\n- The backend will treat the **first** file in `images` as the main image and the rest as sub-images.\n\n**Note:** `productSizes` should be sent as a JSON string array, e.g. `\'[{"size":"Small","quantity":5}]\'`',
+            'Creates a new product with image uploads.\n\n**Content-Type:** `multipart/form-data` (not JSON).\n\n**Image upload rules:**\n- Attach files in the `images` field\n- First file → main image (required)\n- Files 2–6 → sub-images (max 5 sub-images)\n- Accepted formats: JPEG, PNG, WebP — max **5 MB** per file\n\n**`productSizes` format:** must be a JSON string:\n```\n[{"size":"Small","quantity":10},{"size":"Medium","quantity":5}]\n```\nValid sizes: `Small`, `Medium`, `Large`\n\n**Required fields:** `productName`, `productDescription`, `productPrice`, `productCategory`, `productCollection`, `productJewelryType`, `productMaterial`, `productSizes`, `images` (at least 1 file)',
           security: [{ BearerAuth: [] }],
           requestBody: {
             required: true,
@@ -1307,18 +1410,43 @@ const options: swaggerJsdoc.Options = {
                     "productDescription",
                     "productPrice",
                     "productCategory",
+                    "productCollection",
+                    "productJewelryType",
+                    "productMaterial",
+                    "productSizes",
                     "images",
                   ],
                   properties: {
                     productName: {
                       type: "string",
-                      example: "Gold Elegance Ring",
+                      example: "Gold Cuban Chain Bracelet",
+                      description: "Display name of the product",
                     },
                     productDescription: {
                       type: "string",
-                      example: "A stunning 18k gold ring",
+                      example:
+                        "A premium 18k gold Cuban link bracelet, handcrafted for durability and timeless elegance.",
+                      description:
+                        "Full product description shown on the product page",
                     },
-                    productPrice: { type: "number", example: 150000 },
+                    productPrice: {
+                      type: "number",
+                      example: 85000,
+                      description:
+                        "Price in Naira (kobo conversion handled by backend)",
+                    },
+                    productCategory: {
+                      type: "string",
+                      example: "507f1f77bcf86cd799439011",
+                      description:
+                        "MongoDB _id of the category. Get valid IDs from GET /categories",
+                    },
+                    productCollection: {
+                      type: "string",
+                      example: "507f1f77bcf86cd799439022",
+                      description:
+                        "MongoDB _id of the collection. Get valid IDs from GET /collections",
+                    },
                     productJewelryType: {
                       type: "string",
                       enum: [
@@ -1329,32 +1457,57 @@ const options: swaggerJsdoc.Options = {
                         "Pant Chains",
                         "Anklets",
                       ],
-                      example: "Rings",
-                      description:
-                        "Type of jewelry. Allowed values: Rings, Necklaces, Earrings, Bracelets, Pant Chains, Anklets.",
+                      example: "Bracelets",
+                      description: "Type of jewelry piece",
                     },
-                    productMaterial: { type: "string", example: "Gold" },
-                    productKarat: { type: "string", example: "18k" },
+                    productMaterial: {
+                      type: "string",
+                      enum: [
+                        "Gold",
+                        "VVS Diamonds Natural",
+                        "VVS Diamonds Lab",
+                      ],
+                      example: "Gold",
+                      description: "Primary material of the product",
+                    },
+                    productKarat: {
+                      type: "string",
+                      enum: ["14k", "18k", "24k"],
+                      example: "18k",
+                      description:
+                        "Gold karat (optional — only applicable for gold products)",
+                    },
+                    productCarat: {
+                      type: "string",
+                      example: "1.5ct",
+                      description:
+                        "Diamond carat weight (optional — only applicable for diamond products)",
+                    },
+                    productWeight: {
+                      type: "string",
+                      enum: ["3-6g", "7-10g", "11-15g"],
+                      example: "7-10g",
+                      description: "Weight range of the product (optional)",
+                    },
                     productSizes: {
                       type: "string",
                       example:
-                        '[{"size":"Small","quantity":5},{"size":"Medium","quantity":3}]',
+                        '[{"size":"Small","quantity":10},{"size":"Medium","quantity":15},{"size":"Large","quantity":5}]',
                       description:
-                        "JSON string array of size objects with quantity",
+                        "JSON string array of size + stock objects. Each size must be Small, Medium, or Large. Quantity must be >= 0.",
                     },
-                    productCategory: {
-                      type: "string",
-                      description: "Category MongoDB _id",
-                    },
-                    productCollection: {
-                      type: "string",
-                      description: "Collection MongoDB _id (optional)",
+                    isNewArrival: {
+                      type: "boolean",
+                      example: true,
+                      default: false,
+                      description:
+                        "Mark as a new arrival. Shows up in GET /new-arrivals on the storefront.",
                     },
                     images: {
                       type: "array",
                       items: { type: "string", format: "binary" },
                       description:
-                        "Product images. First file is used as main image; remaining files as sub-images (max 6 files).",
+                        "Product image files. First file becomes the main image; files 2–6 become sub-images. Max 5 MB per file. Accepted: JPEG, PNG, WebP.",
                     },
                   },
                 },
@@ -1362,7 +1515,45 @@ const options: swaggerJsdoc.Options = {
             },
           },
           responses: {
-            "201": { description: "Product created" },
+            "201": {
+              description: "Product created successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      status: { type: "string", example: "success" },
+                      message: {
+                        type: "string",
+                        example: "Product created successfully",
+                      },
+                      data: {
+                        type: "object",
+                        properties: {
+                          product: { $ref: "#/components/schemas/Product" },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            "400": {
+              description:
+                "Missing required fields or invalid productSizes JSON",
+              content: {
+                "application/json": {
+                  schema: { $ref: "#/components/schemas/ErrorResponse" },
+                  example: {
+                    status: "fail",
+                    message:
+                      "Please provide all required product fields (including at least 1 image)",
+                  },
+                },
+              },
+            },
+            "401": { description: "Not logged in" },
+            "403": { description: "Admin access required" },
           },
         },
       },
@@ -1404,6 +1595,8 @@ const options: swaggerJsdoc.Options = {
         delete: {
           tags: ["Admin - Products"],
           summary: "Delete a product",
+          description:
+            "Deletes the product and automatically removes all Favourite documents that reference it, so users won't see dead favourites.",
           security: [{ BearerAuth: [] }],
           parameters: [
             {
@@ -1414,7 +1607,9 @@ const options: swaggerJsdoc.Options = {
             },
           ],
           responses: {
-            "200": { description: "Product deleted" },
+            "200": {
+              description: "Product deleted and orphaned favourites cleaned up",
+            },
             "404": { description: "Product not found" },
           },
         },

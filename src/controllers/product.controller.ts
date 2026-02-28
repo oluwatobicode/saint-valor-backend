@@ -55,6 +55,11 @@ export const getAllProducts = async (
       filter.productPrice = priceFilter;
     }
 
+    // ?inStock=true → only products with at least one size that has stock remaining
+    if (req.query.inStock === "true") {
+      filter["productSizes"] = { $elemMatch: { quantity: { $gt: 0 } } };
+    }
+
     const [products, totalItems] = await Promise.all([
       Product.find(filter)
         .populate("productCategory", "name slug")

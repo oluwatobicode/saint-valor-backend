@@ -38,10 +38,23 @@ const userSchema = new mongoose.Schema(
       enum: ["customer", "admin"],
       default: "customer",
     },
-
     memberSince: {
       type: Date,
       default: Date.now,
+    },
+
+    // Email verification
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationOtp: {
+      type: String,
+      select: false, // never returned unless explicitly requested
+    },
+    verificationOtpExpires: {
+      type: Date,
+      select: false,
     },
   },
   {
@@ -50,14 +63,15 @@ const userSchema = new mongoose.Schema(
 );
 
 export interface IUser extends mongoose.Document, UserType {
+  isVerified: boolean;
+  verificationOtp?: string;
+  verificationOtpExpires?: Date;
   correctPassword(candidatePassword: string): Promise<boolean>;
 }
 
-// for hashing a password
+// Hash password before saving
 userSchema.pre("save", async function () {
-  //  1) Only hash the password if it has been modified (or is new)
   if (!this.isModified("password")) return;
-
   try {
     const salt = await bcrypt.genSalt(12);
     this.password = await bcrypt.hash(this.password, salt);

@@ -5,7 +5,8 @@ import { HTTP_STATUS } from "../config";
 import { config } from "../config/app.config";
 import AppError from "../utils/AppError";
 import "../types";
-import { sendWelcomeEmail } from "../services/email.service";
+import { sendOtpEmail, sendWelcomeEmail } from "../services/email.service";
+import crypto from "crypto";
 
 // helper to sign a JWT token
 const signToken = (userId: string, email: string, role: string): string => {
@@ -14,6 +15,11 @@ const signToken = (userId: string, email: string, role: string): string => {
     config.jwtSecret as jwt.Secret,
     { expiresIn: "7d" } as jwt.SignOptions,
   );
+};
+
+// Generate a 6-digit OTP
+const generateOtp = (): string => {
+  return crypto.randomInt(100000, 999999).toString();
 };
 
 // signup
@@ -58,37 +64,154 @@ export const signup = async (
       return next(new AppError("Email already exists", HTTP_STATUS.CONFLICT));
     }
 
+    // Generate OTP and set expiry (10 minutes)
+    const otp = generateOtp();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+
     const newUser = await User.create({
       firstName,
       lastName,
       email,
       password,
+      isVerified: false,
+      verificationOtp: otp,
+      verificationOtpExpires: otpExpires,
     });
 
-    const token = signToken(
-      newUser._id.toString(),
-      newUser.email,
-      newUser.role,
-    );
-
-    sendWelcomeEmail(newUser.email, newUser.firstName);
+    // Send OTP email (fire-and-forget)
+    sendOtpEmail(newUser.email, otp);
 
     res.status(HTTP_STATUS.CREATED).json({
       status: "success",
-      message: "Account created successfully",
-      token,
+      message:
+        "Account created. A 6-digit verification code has been sent to your email.",
       data: {
-        user: {
-          id: newUser._id,
-          firstName: newUser.firstName,
-          lastName: newUser.lastName,
-          email: newUser.email,
-          role: newUser.role,
-        },
+        email: newUser.email,
       },
     });
   } catch (error) {
     console.error(error);
+    next(error);
+  }
+};
+
+// verify email with OTP
+export const verifyEmail = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return next(
+        new AppError(
+          "Please provide your email and the verification code",
+          HTTP_STATUS.BAD_REQUEST,
+        ),
+      );
+    }
+
+    // Select the OTP fields (excluded by default)
+    const user = await User.findOne({ email }).select(
+      "+verificationOtp +verificationOtpExpires",
+    );
+
+    if (!user) {
+      return next(new AppError("User not found", HTTP_STATUS.NOT_FOUND));
+    }
+
+    if (user.isVerified) {
+      return next(
+        new AppError("Email is already verified", HTTP_STATUS.BAD_REQUEST),
+      );
+    }
+
+    if (
+      !user.verificationOtp ||
+      !user.verificationOtpExpires ||
+      user.verificationOtp !== otp.toString() ||
+      user.verificationOtpExpires < new Date()
+    ) {
+      return next(
+        new AppError(
+          "Invalid or expired verification code",
+          HTTP_STATUS.BAD_REQUEST,
+        ),
+      );
+    }
+
+    // Mark as verified and clear OTP fields
+    user.isVerified = true;
+    user.verificationOtp = undefined;
+    user.verificationOtpExpires = undefined;
+    await user.save();
+
+    // Send welcome email (fire-and-forget)
+    sendWelcomeEmail(user.email, user.firstName);
+
+    // Issue JWT now that verification is complete
+    const token = signToken(user._id.toString(), user.email, user.role);
+
+    res.status(HTTP_STATUS.Ok).json({
+      status: "success",
+      message: "Email verified successfully. Welcome to Saint Valor!",
+      token,
+      data: {
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role: user.role,
+        },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// resend verification OTP
+export const resendOtp = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return next(
+        new AppError("Please provide your email", HTTP_STATUS.BAD_REQUEST),
+      );
+    }
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return next(new AppError("User not found", HTTP_STATUS.NOT_FOUND));
+    }
+
+    if (user.isVerified) {
+      return next(
+        new AppError("Email is already verified", HTTP_STATUS.BAD_REQUEST),
+      );
+    }
+
+    const otp = generateOtp();
+    user.verificationOtp = otp;
+    user.verificationOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    sendOtpEmail(user.email, otp);
+
+    res.status(HTTP_STATUS.Ok).json({
+      status: "success",
+      message: "A new verification code has been sent to your email.",
+    });
+  } catch (error) {
     next(error);
   }
 };
@@ -116,6 +239,15 @@ export const login = async (
     if (!user || !(await user.correctPassword(password))) {
       return next(
         new AppError("Invalid credentials", HTTP_STATUS.UNAUTHORIZED),
+      );
+    }
+
+    if (!user.isVerified) {
+      return next(
+        new AppError(
+          "Please verify your email before logging in",
+          HTTP_STATUS.FORBIDDEN,
+        ),
       );
     }
 
@@ -163,10 +295,10 @@ export const updateProfile = async (
   try {
     const { firstName, lastName, phone, address } = req.body;
 
-    if (!req.body) {
+    if (!firstName && !lastName && !phone && !address) {
       return next(
         new AppError(
-          "Please provide first name and last name",
+          "Please provide at least one field to update",
           HTTP_STATUS.BAD_REQUEST,
         ),
       );

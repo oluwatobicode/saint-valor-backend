@@ -6,6 +6,7 @@ import { config } from "../config/app.config";
 import { generateOrderId } from "../utils/generateOrderId";
 import { initializeTransaction, verifyTransaction } from "../utils/paystack";
 import AppError from "../utils/AppError";
+import { orderRecievedEmail } from "../services/email.service";
 import "../types";
 
 //  INITIALIZE ORDER
@@ -57,9 +58,15 @@ export const initializeOrder = async (
       );
     }
 
-    const totalPrice = items.reduce(
-      (sum: number, item: { price: number; quantity: number }) =>
-        sum + item.price * item.quantity,
+    const typedItems = items as Array<{
+      productId: string;
+      size?: string;
+      price: number;
+      quantity: number;
+    }>;
+
+    const totalPrice = typedItems.reduce(
+      (sum, item) => sum + item.price * item.quantity,
       0,
     );
 
@@ -72,48 +79,70 @@ export const initializeOrder = async (
       );
     }
 
-    // Check stock availability for each item before charging the user
-    const typedItems = items as Array<{
+    // Atomically reserve stock for each item — prevents concurrent oversell
+    const reservedItems: Array<{
       productId: string;
-      size?: string;
+      size: string;
       quantity: number;
-    }>;
+    }> = [];
 
     for (const item of typedItems) {
-      const product = await Product.findById(item.productId);
+      // typedItems declared above
+      if (!item.size) continue; // skip items without a size (no stock to track)
 
-      if (!product) {
+      const reserved = await Product.findOneAndUpdate(
+        {
+          _id: item.productId,
+          productSizes: {
+            $elemMatch: { size: item.size, quantity: { $gte: item.quantity } },
+          },
+        },
+        { $inc: { "productSizes.$.quantity": -item.quantity } },
+      );
+
+      if (!reserved) {
+        // Rollback any items already reserved in this loop
+        if (reservedItems.length > 0) {
+          await Promise.all(
+            reservedItems.map((r) =>
+              Product.findOneAndUpdate(
+                { _id: r.productId, "productSizes.size": r.size },
+                { $inc: { "productSizes.$.quantity": r.quantity } },
+              ),
+            ),
+          );
+        }
+
+        // Fetch product name for a clear error message
+        const product = await Product.findById(item.productId).select(
+          "productName productSizes",
+        );
+        const sizeEntry = product?.productSizes?.find(
+          (s: { size: string; quantity: number }) => s.size === item.size,
+        );
+
+        if (!product) {
+          return next(
+            new AppError(
+              `Product with ID "${item.productId}" not found`,
+              HTTP_STATUS.NOT_FOUND,
+            ),
+          );
+        }
+
         return next(
           new AppError(
-            `Product with ID "${item.productId}" not found`,
-            HTTP_STATUS.NOT_FOUND,
+            `Insufficient stock for "${product.productName}" (size: ${item.size}). Available: ${sizeEntry?.quantity ?? 0}, Requested: ${item.quantity}`,
+            HTTP_STATUS.BAD_REQUEST,
           ),
         );
       }
 
-      if (item.size) {
-        const sizeEntry = product.productSizes?.find(
-          (s: { size: string; quantity: number }) => s.size === item.size,
-        );
-
-        if (!sizeEntry) {
-          return next(
-            new AppError(
-              `Size "${item.size}" not available for product "${product.productName}"`,
-              HTTP_STATUS.BAD_REQUEST,
-            ),
-          );
-        }
-
-        if (sizeEntry.quantity < item.quantity) {
-          return next(
-            new AppError(
-              `Insufficient stock for "${product.productName}" (size: ${item.size}). Available: ${sizeEntry.quantity}, Requested: ${item.quantity}`,
-              HTTP_STATUS.BAD_REQUEST,
-            ),
-          );
-        }
-      }
+      reservedItems.push({
+        productId: String(item.productId),
+        size: item.size,
+        quantity: item.quantity,
+      });
     }
 
     // Generate unique Paystack reference
@@ -131,6 +160,17 @@ export const initializeOrder = async (
     );
 
     if (!paystackResponse.status) {
+      // Restore reserved stock since payment won't proceed
+      if (reservedItems.length > 0) {
+        await Promise.all(
+          reservedItems.map((r) =>
+            Product.findOneAndUpdate(
+              { _id: r.productId, "productSizes.size": r.size },
+              { $inc: { "productSizes.$.quantity": r.quantity } },
+            ),
+          ),
+        );
+      }
       return next(
         new AppError("Payment initialization failed", HTTP_STATUS.BAD_REQUEST),
       );
@@ -188,7 +228,7 @@ export const verifyOrder = async (
   try {
     const reference = req.params.reference as string;
 
-    // Find the pending order by Paystack reference
+    // Find the order by Paystack reference
     const order = await Order.findOne({ paystackReference: reference });
 
     if (!order) {
@@ -196,6 +236,16 @@ export const verifyOrder = async (
         new AppError(
           "Order not found for this reference",
           HTTP_STATUS.NOT_FOUND,
+        ),
+      );
+    }
+
+    // Ownership check — users can only verify their own orders
+    if (order.user && order.user.toString() !== req.user?._id?.toString()) {
+      return next(
+        new AppError(
+          "You are not authorized to verify this order",
+          HTTP_STATUS.FORBIDDEN,
         ),
       );
     }
@@ -213,51 +263,55 @@ export const verifyOrder = async (
     // Verify with Paystack
     const paystackResponse = await verifyTransaction(reference);
 
-    if (
-      !paystackResponse.status ||
-      paystackResponse.data.status !== "success"
-    ) {
-      // Mark the order payment as failed
-      await Order.findByIdAndUpdate(order._id, { paymentStatus: "failed" });
-
-      return next(
-        new AppError("Payment verification failed", HTTP_STATUS.BAD_REQUEST),
-      );
-    }
-
-    // Update order to paid + ongoing
-    order.paymentStatus = "paid";
-    order.orderStatus = "ongoing";
-    await order.save();
-
-    // Update product salesCount and decrement stock quantities
     const items = order.items as Array<{
       productId: string;
       size?: string;
       quantity: number;
     }>;
 
-    await Promise.all(
-      items.map(async (item) => {
-        // Increment salesCount
-        await Product.findByIdAndUpdate(item.productId, {
-          $inc: { salesCount: item.quantity },
-        });
+    if (
+      !paystackResponse.status ||
+      paystackResponse.data.status !== "success"
+    ) {
+      // Mark order as failed
+      await Order.findByIdAndUpdate(order._id, { paymentStatus: "failed" });
 
-        // Decrement stock for the size ordered (if size is specified)
-        if (item.size) {
-          await Product.updateOne(
-            {
-              _id: item.productId,
-              "productSizes.size": item.size,
-            },
-            {
-              $inc: { "productSizes.$.quantity": -item.quantity },
-            },
-          );
-        }
-      }),
+      // Restore the stock that was reserved at initializeOrder time
+      await Promise.all(
+        items
+          .filter((item) => item.size)
+          .map((item) =>
+            Product.findOneAndUpdate(
+              { _id: item.productId, "productSizes.size": item.size },
+              { $inc: { "productSizes.$.quantity": item.quantity } },
+            ),
+          ),
+      );
+
+      return next(
+        new AppError("Payment verification failed", HTTP_STATUS.BAD_REQUEST),
+      );
+    }
+
+    // Payment confirmed — update order status
+    order.paymentStatus = "paid";
+    order.orderStatus = "ongoing";
+    await order.save();
+
+    // Increment salesCount (stock was already decremented at initializeOrder)
+    await Promise.all(
+      items.map((item) =>
+        Product.findByIdAndUpdate(item.productId, {
+          $inc: { salesCount: item.quantity },
+        }),
+      ),
     );
+
+    // Send order confirmation email (fire-and-forget)
+    const userEmail = req.user?.email;
+    if (userEmail) {
+      orderRecievedEmail(userEmail, order.orderId).catch(() => {});
+    }
 
     res.status(HTTP_STATUS.Ok).json({
       status: "success",
@@ -350,7 +404,6 @@ export const getUserOrders = async (
     });
   } catch (error) {
     next(error);
-    console.log(error);
   }
 };
 

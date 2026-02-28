@@ -5,18 +5,20 @@ import rateLimit from "express-rate-limit";
 
 const router = Router();
 
-// app rate limit
+// Rate limiter: max 5 requests per 15 min per IP
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
-  message: "You have made too many login attempts. Please try again later.",
+  max: 10,
+  message: "You have made too many attempts. Please try again later.",
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 // Public routes
-router.post("/signup", authController.signup);
+router.post("/signup", authLimiter, authController.signup);
 router.post("/login", authLimiter, authController.login);
+router.post("/verify-email", authLimiter, authController.verifyEmail);
+router.post("/resend-otp", authLimiter, authController.resendOtp);
 
 // Protected routes (require login)
 router.get("/me", authMiddleware, authController.getMe);

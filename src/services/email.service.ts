@@ -110,18 +110,25 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
 
 // sending otp email
 export const sendOtpEmail = async (email: string, otp: string) => {
-  const html = generateEmailTemplate(
-    "Verification Required",
-    `<p>Please use the verification code below to complete your authentication. This code will expire in 10 minutes.</p>
-     <div class="otp-box">${otp}</div>`,
-  );
+  try {
+    const html = generateEmailTemplate(
+      "Verify Your Email",
+      `<p>Please use the verification code below to confirm your email address. This code will expire in <strong>10 minutes</strong>.</p>
+       <div style="text-align:center;margin:28px 0;">
+         <span style="display:inline-block;padding:16px 36px;background:#4A0E0E;color:#D4AF37;font-size:32px;font-weight:bold;letter-spacing:10px;border-radius:6px;">${otp}</span>
+       </div>
+       <p style="font-size:13px;color:#777;">If you did not create a Saint Valor account, you can safely ignore this email.</p>`,
+    );
 
-  await resend.emails.send({
-    from: "saintvalor@oluwatobii.xyz",
-    to: email,
-    subject: "Your Saint Valor Verification Code",
-    html,
-  });
+    await resend.emails.send({
+      from: "Support <saintvalor@oluwatobii.xyz>",
+      to: email,
+      subject: "Your Saint Valor Verification Code",
+      html,
+    });
+  } catch (error) {
+    console.error("Failed to send OTP email:", error);
+  }
 };
 
 // sending forget password email
