@@ -35,12 +35,13 @@ const app: Application = express();
 app.use(helmet());
 app.use(
   cors({
-    origin: ["https://saint-valor.vercel.app/", "http://localhost:3000"],
+    origin: ["https://saint-valor.vercel.app", "http://localhost:3000"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
+app.options("*", cors()); // handle preflight for all routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
